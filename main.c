@@ -1,74 +1,42 @@
 #include "monty.h"
 
+/* Initialise Global variables */
+global_t global = {
+	NULL, NULL, STACK, 0, NULL
+};
+
 /**
- * main - entry into interpreter
- * @argc: argc counter
+ * main - entry point
+ * @argc: argument count
  * @argv: arguments
- * Return: 0 on success
+ * Return: 0 success
  */
-int main(int argc, char *argv[])
+int main(int argc, char **argv)
 {
-	int fd, ispush = 0;
-	unsigned int line = 1;
-	ssize_t n_read;
-	char *buffer, *token;
-	stack_t *h = NULL;
+	char *content;
+	char **lines;
 
 	if (argc != 2)
 	{
-		printf("USAGE: monty file\n");
+		dprintf(2, "USAGE: monty file\n");
 		exit(EXIT_FAILURE);
 	}
-	fd = open(argv[1], O_RDONLY);
-	if (fd == -1)
+
+	content = read_file(argv[1]);
+	/* truncate_on_empty_line(content); */
+	lines = strtow(content, "\n");
+	free(content);
+	if (!lines)
 	{
-		printf("Error: Can't open file %s\n", argv[1]);
+		dprintf(2, "Error: malloc failed\n");
 		exit(EXIT_FAILURE);
 	}
-	buffer = malloc(sizeof(char) * 10000);
-	if (!buffer)
-		return (0);
-	n_read = read(fd, buffer, 10000);
-	if (n_read == -1)
-	{
-		free(buffer);
-		close(fd);
+	parse_instructions(lines);
+
+	free_tokenized(lines);
+	clear_memory();
+	if (global.quit == EXIT_FAILURE)
 		exit(EXIT_FAILURE);
-	}
-	token = strtok(buffer, "\n\t\a\r ;:");
-	while (token != NULL)
-	{
-		if (ispush == 1)
-		{
-			push(&h, line, token);
-			ispush = 0;
-			token = strtok(NULL, "\n\t\a\r ;:");
-			line++;
-			continue;
-		}
-		else if (strcmp(token, "push") == 0)
-		{
-			ispush = 1;
-			token = strtok(NULL, "\n\t\a\r ;:");
-			continue;
-		}
-		else
-		{
-			if (get_op_func(token) != 0)
-			{
-				get_op_func(token)(&h, line);
-			}
-			else
-			{
-				free_dlist(&h);
-				printf("L%d: unknown instruction %s\n", line, token);
-				exit(EXIT_FAILURE);
-			}
-		}
-		line++;
-		token = strtok(NULL, "\n\t\a\r ;:");
-	}
-	free_dlist(&h); free(buffer);
-	close(fd);
+
 	return (0);
 }
